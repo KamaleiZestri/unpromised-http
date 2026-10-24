@@ -1,7 +1,5 @@
 package cases;
 
-import haxe.Timer;
-import utest.Async;
 import utest.ITest;
 
 @:timeout(20000)

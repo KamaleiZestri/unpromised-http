@@ -1,8 +1,8 @@
 package cases;
 
+import http.HttpClient;
 import http.HttpError;
 import utest.Assert;
-import http.HttpClient;
 import utest.Async;
 
 @:timeout(20000)
@@ -11,40 +11,50 @@ class TestErrors extends TestBase {
 
     function setupClass() {
         BASE_URL = host();
-        logging.LogManager.instance.addAdaptor(new logging.adaptors.ConsoleLogAdaptor({
-            levels: [logging.LogLevel.Info, logging.LogLevel.Error]
-        }));
+        haxe.Log.trace = logging.ExampleTracer.JsonTrace;
     }
 
     function teardownClass() {
-        logging.LogManager.instance.clearAdaptors();
+        haxe.Log.trace = logging.ExampleTracer.DefaultTrace;
     }
 
     function testGet_500(async:Async) {
         var client = new HttpClient();
         client.retryDelayMs = 0;
         client.retryCount = 0;
-        client.get('${BASE_URL}/status/500').then(result -> {
-            Assert.fail("shouldnt get here");
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.equals("", error.bodyAsString);
-            Assert.equals(500, error.httpStatus);
-            async.done();
-        });
+        switch (client.get('${BASE_URL}/status/500'))
+        {
+            case Success(response):
+            {
+                Assert.fail("shouldnt get here");
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.equals("", error.bodyAsString);
+                Assert.equals(500, error.httpStatus);
+                async.done();
+            }
+        }
     }
 
     function testGet_404(async:Async) {
         var client = new HttpClient();
         client.retryDelayMs = 0;
         client.retryCount = 0;
-        client.get('${BASE_URL}/status/404').then(result -> {
-            Assert.fail("shouldnt get here");
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.equals("", error.bodyAsString);
-            Assert.equals(404, error.httpStatus);
-            async.done();
-        });
+        switch (client.get('${BASE_URL}/status/404'))
+        {
+            case Success(response):
+            {
+                Assert.fail("shouldnt get here");
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.equals("", error.bodyAsString);
+                Assert.equals(500, error.httpStatus);
+                async.done();
+            }
+        }
     }
 }

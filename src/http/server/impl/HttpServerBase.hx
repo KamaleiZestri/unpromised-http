@@ -1,15 +1,11 @@
 package http.server.impl;
 
-import haxe.display.JsonModuleTypes.JsonTypePathWithParams;
 import haxe.io.Path;
-import logging.LogManager;
-import logging.Logger;
 import promises.Promise;
 
 #if (sys || hxnodejs)
 
 class HttpServerBase {
-    private var baseLog:Logger = new Logger(HttpServerBase);
 
     public var onRequest:HttpRequest->HttpResponse->Promise<HttpResponse> = null;
 
@@ -35,7 +31,9 @@ class HttpServerBase {
             _fileDirs = [];
         }
         var dir = Path.normalize(Sys.getCwd() + "/" + dir);
-        baseLog.info('serving static resources from "${dir}"');
+        #if includeHttpTraces
+        trace('serving static resources from "${dir}"', LogLevel.Info);
+        #end
         _fileDirs.push({
             prefix: prefix,
             dir: dir

@@ -1,10 +1,11 @@
 package cases;
 
+import http.HttpClient;
+import http.HttpError;
 import http.HttpResponse;
 import http.IHttpResponseTransformer;
-import http.HttpError;
+import logging.ExampleTracer;
 import utest.Assert;
-import http.HttpClient;
 import utest.Async;
 
 @:timeout(20000)
@@ -13,30 +14,34 @@ class TestResponseTransformation extends TestBase {
 
     function setupClass() {
         BASE_URL = host();
-        logging.LogManager.instance.addAdaptor(new logging.adaptors.ConsoleLogAdaptor({
-            levels: [logging.LogLevel.Info, logging.LogLevel.Error]
-        }));
+        haxe.Log.trace = ExampleTracer.JsonTrace;
     }
 
     function teardownClass() {
-        logging.LogManager.instance.clearAdaptors();
+        haxe.Log.trace = ExampleTracer.DefaultTrace;
     }
 
     function testBasic(async:Async) {
         var client = new HttpClient();
         client.responseTransformers = [new AddHeaders()];
-        client.get('${BASE_URL}/get').then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/get", json.url);
-            Assert.equals("header value1", response.headers.get("Headeraddedfromtransformer1"));
-            Assert.equals("header value2", response.headers.get("Headeraddedfromtransformer2"));
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.get('${BASE_URL}/get'))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/get", json.url);
+                Assert.equals("header value1", response.headers.get("Headeraddedfromtransformer1"));
+                Assert.equals("header value2", response.headers.get("Headeraddedfromtransformer2"));
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 }
 

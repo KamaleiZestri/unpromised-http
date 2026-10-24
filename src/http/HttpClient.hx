@@ -1,20 +1,12 @@
 package http;
 
-import haxe.Timer;
 import http.HttpMethod;
+import http.HttpOption;
 import http.HttpRequest;
 import http.providers.DefaultHttpProvider;
-import logging.LogManager;
-import logging.Logger;
-import promises.Promise;
-import queues.IQueue;
-import queues.IQueue;
-import queues.NonQueue;
-import queues.NonQueue;
-import queues.QueueFactory;
+import logging.LogLevel;
 
 class HttpClient {
-    private var log:Logger = new Logger(HttpClient);
     /**
      * Whether to follow http redirects automatically or not
      */
@@ -44,31 +36,6 @@ class HttpClient {
     public function new() {
     }
 
-    // some queues will want to serialize the data, this means things
-    // like functions wont work since they cant be serialized, the 
-    // solution is to keep the data (including functions) in a map
-    // that we'll look up based on the queue data which, for now
-    // will simply be an incrementing int.
-    //
-    // TODO: is an incrementing int "good enough"?
-    private var _nextId:Int = 0;
-    private var _idToItem:Map<Int, RequestQueueItem> = [];
-    private var _requestQueue:IQueue<Int> = null;
-    public var requestQueue(get, set):IQueue<Int>;
-    private function get_requestQueue():IQueue<Int> {
-        if (_requestQueue != null) {
-            return _requestQueue;
-        }
-
-        _requestQueue = QueueFactory.instance.createQueue(QueueFactory.NON_QUEUE);
-        _requestQueue.onMessage = onQueueMessage;
-        return _requestQueue;
-    }
-    private function set_requestQueue(value:IQueue<Int>):IQueue<Int> {
-        _requestQueue = value;
-        _requestQueue.onMessage = onQueueMessage;
-        return value;
-    }
 
     @:isVar public var encodeUrl(default, set):Bool = true;
     function set_encodeUrl(value) {
@@ -116,9 +83,9 @@ class HttpClient {
      * @param request - The url that is being requested
      * @param queryParams - Add any query parameters
      * @param headers - Add any additional headers that should go along with the request, these will be in addition to the headers set on `defaultHeaders`. \nNote headers specified here will take precedent over ones specified as default
-     * @return Promise<HttpResponse>
+     * @return HttpOption
      */
-    public inline function get(request:HttpRequest, queryParams:Map<String, Any> = null, headers:Map<String, Any> = null):Promise<HttpResponse> {
+    public inline function get(request:HttpRequest, queryParams:Map<String, Any> = null, headers:Map<String, Any> = null):HttpOption {
         request.method = HttpMethod.Get;
         return makeRequest(request, null, queryParams, headers);
     }
@@ -127,10 +94,21 @@ class HttpClient {
      * @param request - The url that is being requested
      * @param queryParams - Add any query parameters
      * @param headers - Add any additional headers that should go along with the request, these will be in addition to the headers set on `defaultHeaders`. \nNote headers specified here will take precedent over ones specified as default
-     * @return Promise<HttpResponse>
+     * @return HttpOption
      */
-    public inline function post(request:HttpRequest, body:Any = null, queryParams:Map<String, Any> = null, headers:Map<String, Any> = null):Promise<HttpResponse> {
+    public inline function post(request:HttpRequest, body:Any = null, queryParams:Map<String, Any> = null, headers:Map<String, Any> = null):HttpOption {
         request.method = HttpMethod.Post;
+        return makeRequest(request, body, queryParams, headers);
+    }
+    /**
+     * Performs a patch request 
+     * @param request - The url that is being requested
+     * @param queryParams - Add any query parameters
+     * @param headers - Add any additional headers that should go along with the request, these will be in addition to the headers set on `defaultHeaders`. \nNote headers specified here will take precedent over ones specified as default
+     * @return HttpOption
+     */
+    public inline function patch(request:HttpRequest, body:Any = null, queryParams:Map<String, Any> = null, headers:Map<String, Any> = null):HttpOption {
+        request.method = HttpMethod.Patch;
         return makeRequest(request, body, queryParams, headers);
     }
     /**
@@ -139,9 +117,9 @@ class HttpClient {
      * @param body - Add a data object
      * @param queryParams - Add any query parameters
      * @param headers - Add any additional headers that should go along with the request, these will be in addition to the headers set on `defaultHeaders`. \nNote headers specified here will take precedent over ones specified as default
-     * @return Promise<HttpResponse>
+     * @return HttpOption
      */
-    public inline function put(request:HttpRequest, body:Any = null, queryParams:Map<String, Any> = null, headers:Map<String, Any> = null):Promise<HttpResponse> {
+    public inline function put(request:HttpRequest, body:Any = null, queryParams:Map<String, Any> = null, headers:Map<String, Any> = null):HttpOption {
         request.method = HttpMethod.Put;
         return makeRequest(request, body, queryParams, headers);
     }
@@ -151,9 +129,9 @@ class HttpClient {
      * @param body - Add a data object 
      * @param queryParams - Add any query parameters
      * @param headers - Add any additional headers that should go along with the request, these will be in addition to the headers set on `defaultHeaders`. \nNote headers specified here will take precedent over ones specified as default
-     * @return Promise<HttpResponse>
+     * @return HttpOption
      */
-    public inline function delete(request:HttpRequest, body:Any = null, queryParams:Map<String, Any> = null, headers:Map<String, Any> = null):Promise<HttpResponse> {
+    public inline function delete(request:HttpRequest, body:Any = null, queryParams:Map<String, Any> = null, headers:Map<String, Any> = null):HttpOption {
         request.method = HttpMethod.Delete;
         return makeRequest(request, body, queryParams, headers);
     }
@@ -164,9 +142,9 @@ class HttpClient {
      * @param body - Add a data object 
      * @param queryParams - Add any query parameters
      * @param headers - Add any additional headers that should go along with the request, these will be in addition to the headers set on `defaultHeaders`. \nNote headers specified here will take precedent over ones specified as default
-     * @return Promise<HttpResponse>
+     * @return HttpOption
      */
-    public function makeRequest(request:HttpRequest, body:Any = null, queryParams:Map<String, Any> = null, headers:Map<String, Any> = null):Promise<HttpResponse> {
+    public function makeRequest(request:HttpRequest, body:Any = null, queryParams:Map<String, Any> = null, headers:Map<String, Any> = null):HttpOption {
         var copy = request.clone();
 
         // query params
@@ -214,74 +192,87 @@ class HttpClient {
             copy.body = body;
         }
 
-        return new Promise((resolve, reject) -> {
-            requestQueue.start().then(_ -> {
-                _nextId++;
-                _idToItem.set(_nextId, {
-                    retryCount: 0,
-                    request: copy,
-                    resolve: resolve,
-                    reject: reject
-                });
-                requestQueue.enqueue(_nextId);
-            }, error -> {
-                reject(error);
-            });
-        });
+        return processRequest(copy, 0);
     }
 
-    private function onQueueMessage(itemId:Int) {
-        return new Promise((resolve, reject) -> {
-            var item = _idToItem.get(itemId);
-            if (item == null) {
-                var httpError = new HttpError("could not find request item in map");
-                reject(httpError);
-                return;
+    private function processRequest(request:HttpRequest, currentRetryCount:Int):HttpOption
+    {
+        if (requestTransformers != null) {
+            for (transformer in requestTransformers) {
+                transformer.process(request);
             }
-            var request = item.request.clone();
-            if (requestTransformers != null) {
-                for (transformer in requestTransformers) {
-                    transformer.process(request);
-                }
-            }
+        }
 
-            var method:String = request.method;
-            log.info('making "${method.toLowerCase()}" request to "${request.url.build()}"');
-            if (request.method == HttpMethod.Post && request.headers != null && !request.headers.exists(StandardHeaders.ContentLength)) {
-                if (request.body == null) {
-                    request.headers.set(StandardHeaders.ContentLength, 0);
-                } else if (request.body is String) {
-                    var stringBody:String = request.body;
-                    request.headers.set(StandardHeaders.ContentLength, stringBody.length);
-                } else if (request.body is haxe.io.Bytes) {
-                    var bytesBody:haxe.io.Bytes = request.body;
-                    request.headers.set(StandardHeaders.ContentLength, bytesBody.length);
+        #if includeHttpTraces
+        var method:String = request.method;
+        trace('making "${method.toLowerCase()}" request to "${request.url.build()}"', LogLevel.Info);
+        #end
+        if (request.method == HttpMethod.Post && request.headers != null && !request.headers.exists(StandardHeaders.ContentLength)) {
+            if (request.body == null) {
+                request.headers.set(StandardHeaders.ContentLength, 0);
+            } else if (request.body is String) {
+                var stringBody:String = request.body;
+                request.headers.set(StandardHeaders.ContentLength, stringBody.length);
+            } else if (request.body is haxe.io.Bytes) {
+                var bytesBody:haxe.io.Bytes = request.body;
+                request.headers.set(StandardHeaders.ContentLength, bytesBody.length);
+            } else {
+                request.headers.set(StandardHeaders.ContentLength, Std.string(request.body).length);
+            }
+        }
+
+        var resOpt = provider.makeRequest(request);
+
+        #if includeHttpTraces
+        switch (resOpt)
+        {
+            case Success(response):
+            {
+                trace('response received (${response.httpStatus})', LogLevel.Info);
+                trace('response received: ', LogLevel.Debug);
+                trace('    headers:', LogLevel.Debug, response.headers);
+                trace('    body:', LogLevel.Debug, response.bodyAsString);
+            }
+            case Fail(error): trace('null response received', LogLevel.Warning);
+        }
+        #end
+
+        switch (resOpt)
+        {
+            case Fail(error):
+            {
+                if (retryCount == null) {
+                    #if includeHttpTraces
+                    trace('request failed (${error.httpStatus})', LogLevel.Error);
+                    #end
+                    error.retryCount = 0;
+                    return Fail(error);
                 } else {
-                    request.headers.set(StandardHeaders.ContentLength, Std.string(request.body).length);
-                }
-            }
-
-            provider.makeRequest(request).then(response -> {
-                if (response != null) {
-                    if (LogManager.instance.shouldLogDebug) {
-                        log.debug('response received: ');
-                        log.debug('    headers:', response.headers);
-                        log.debug('    body:', response.bodyAsString);
+                    currentRetryCount++;
+                    if (currentRetryCount > retryCount) {
+                        if (retryCount > 0) {
+                            trace('request failed (${error.httpStatus}), retries exhausted', LogLevel.Error);
+                            error.retryCount = currentRetryCount - 1;
+                        } else {
+                            trace('request failed (${error.httpStatus})', LogLevel.Error);
+                            error.retryCount = 0;
+                        }
+                        return Fail(error);
                     } else {
-                        log.info('response received (${response.httpStatus})');
-                    }
-                } else {
-                    if (LogManager.instance.shouldLogWarnings) {
-                        log.warn('null response received');
+                        trace('request failed (${error.httpStatus}), retrying (${currentRetryCount} of ${retryCount})', LogLevel.Error);
+                        return processRequest(request, currentRetryCount);
                     }
                 }
-                
+
+            }
+            case Success(response):
+            {
                 if (responseTransformers != null) {
                     for (transformer in responseTransformers) {
                         transformer.process(response);
                     }
                 }
-    
+
                 // handle redirections by requeing the request with the new url
                 if (followRedirects && (response.httpStatus == 301 || response.httpStatus == 302)) {
                     var redirectLocation:String = null;
@@ -304,14 +295,13 @@ class HttpClient {
 
                     // we'll consider it an error if there is no location header
                     if (redirectLocation == null) {
-                        log.error('redirect encountered (${response.httpStatus}), no location header found');
+                        #if includeHttpTraces
+                        trace('redirect encountered (${response.httpStatus}), no location header found', LogLevel.Error);
+                        #end
                         var httpError = new HttpError("no location header found", response.httpStatus);
                         httpError.body = response.body;
                         httpError.headers = response.headers;
-                        _idToItem.remove(itemId);
-                        item.reject(httpError);
-                        resolve(true); // ack
-                        return;
+                        return Fail(httpError);
                     }
 
                     /* possibly ill conceived - should redirect location be taken "as is" and lose any params / headers on original request?
@@ -324,45 +314,17 @@ class HttpClient {
                     }
                     item.request.url.queryParams = queryParams;
                     */
-                    item.request.url = redirectLocation;
-                    item.retryCount = 0;
+                    request.url = redirectLocation;
+                    retryCount = 0;
                     if (onBeforeRedirect != null) {
-                        onBeforeRedirect(item.request);
+                        onBeforeRedirect(request);
                     }
-                    requestQueue.requeue(itemId);
-                    resolve(true); // ack
-                    return;
+                    return processRequest(request, currentRetryCount);
                 }
 
-                _idToItem.remove(itemId);
-                item.resolve(response);
-                resolve(true); // ack
-            }, (error:HttpError) -> {
-                if (retryCount == null) {
-                    log.error('request failed (${error.httpStatus})');
-                    error.retryCount = 0;
-                    _idToItem.remove(itemId);
-                    item.reject(error); 
-                } else {
-                    item.retryCount++;
-                    if (item.retryCount > retryCount) {
-                        if (retryCount > 0) {
-                            log.error('request failed (${error.httpStatus}), retries exhausted');
-                            error.retryCount = item.retryCount - 1;
-                        } else {
-                            log.error('request failed (${error.httpStatus})');
-                            error.retryCount = 0;
-                        }
-                        _idToItem.remove(itemId);
-                        item.reject(error); 
-                    } else {
-                        log.error('request failed (${error.httpStatus}), retrying (${item.retryCount} of ${retryCount})');
-                        requestQueue.requeue(itemId, retryDelayMs);
-                    }
-                }
-                resolve(true); // we are resolving true even though its an error as this is to tell the queue we have processed the message (ie, ack)
-            });
-        });
+                return Success(response);
+            }
+        }
     }
 }
 

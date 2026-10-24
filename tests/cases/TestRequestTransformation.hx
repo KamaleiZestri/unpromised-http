@@ -1,10 +1,9 @@
 package cases;
 
+import http.HttpClient;
 import http.HttpRequest;
 import http.IHttpRequestTransformer;
-import http.HttpError;
 import utest.Assert;
-import http.HttpClient;
 import utest.Async;
 
 @:timeout(20000)
@@ -13,30 +12,34 @@ class TestRequestTransformation extends TestBase {
 
     function setupClass() {
         BASE_URL = host();
-        logging.LogManager.instance.addAdaptor(new logging.adaptors.ConsoleLogAdaptor({
-            levels: [logging.LogLevel.Info, logging.LogLevel.Error]
-        }));
+        haxe.Log.trace = logging.ExampleTracer.JsonTrace;
     }
 
     function teardownClass() {
-        logging.LogManager.instance.clearAdaptors();
+        haxe.Log.trace = logging.ExampleTracer.DefaultTrace;
     }
 
     function testBasic(async:Async) {
         var client = new HttpClient();
         client.requestTransformers = [new AddHeaders()];
-        client.get('${BASE_URL}/get').then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/get", json.url);
-            Assert.equals("header value1", json.headers.Headeraddedfromtransformer1);
-            Assert.equals("header value2", json.headers.Headeraddedfromtransformer2);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.get('${BASE_URL}/get'))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/get", json.url);
+                Assert.equals("header value1", json.headers.Headeraddedfromtransformer1);
+                Assert.equals("header value2", json.headers.Headeraddedfromtransformer2);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 }
 

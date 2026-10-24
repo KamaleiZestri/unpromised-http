@@ -1,11 +1,10 @@
 package cases;
 
-import http.ContentTypes;
-import http.StandardHeaders;
 import haxe.Json;
-import http.HttpError;
-import utest.Assert;
+import http.ContentTypes;
 import http.HttpClient;
+import http.StandardHeaders;
+import utest.Assert;
 import utest.Async;
 
 @:timeout(20000)
@@ -14,52 +13,62 @@ class TestPayload extends TestBase {
 
     function setupClass() {
         BASE_URL = host();
-        logging.LogManager.instance.addAdaptor(new logging.adaptors.ConsoleLogAdaptor({
-            levels: [logging.LogLevel.Info, logging.LogLevel.Error]
-        }));
+        haxe.Log.trace = logging.ExampleTracer.JsonTrace;
     }
 
     function teardownClass() {
-        logging.LogManager.instance.clearAdaptors();
+        haxe.Log.trace = logging.ExampleTracer.DefaultTrace;
     }
 
     function testPost(async:Async) {
         var client = new HttpClient();
         client.defaultRequestHeaders = [StandardHeaders.ContentType => ContentTypes.ApplicationJson];
-        client.post('${BASE_URL}/post', {foo: "foo string", bar: 111}).then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/post", json.url);
-            var data = json.data;
-            Assert.notNull(data);
-            var jsonData = Json.parse(data);
-            Assert.equals("foo string", jsonData.foo);
-            Assert.equals(111, jsonData.bar);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.post('${BASE_URL}/post', {foo: "foo string", bar: 111}))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/post", json.url);
+                var data = json.data;
+                Assert.notNull(data);
+                var jsonData = Json.parse(data);
+                Assert.equals("foo string", jsonData.foo);
+                Assert.equals(111, jsonData.bar);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 
     function testPut(async:Async) {
         var client = new HttpClient();
         client.defaultRequestHeaders = [StandardHeaders.ContentType => ContentTypes.ApplicationJson];
-        client.put('${BASE_URL}/put', {foo: "foo string", bar: 111}).then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/put", json.url);
-            var data = json.data;
-            Assert.notNull(data);
-            var jsonData = Json.parse(data);
-            Assert.equals("foo string", jsonData.foo);
-            Assert.equals(111, jsonData.bar);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.put('${BASE_URL}/put', {foo: "foo string", bar: 111}))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/put", json.url);
+                var data = json.data;
+                Assert.notNull(data);
+                var jsonData = Json.parse(data);
+                Assert.equals("foo string", jsonData.foo);
+                Assert.equals(111, jsonData.bar);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 }

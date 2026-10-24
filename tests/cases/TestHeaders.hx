@@ -1,8 +1,7 @@
 package cases;
 
-import http.HttpError;
-import utest.Assert;
 import http.HttpClient;
+import utest.Assert;
 import utest.Async;
 
 @:timeout(20000)
@@ -11,77 +10,121 @@ class TestHeaders extends TestBase {
 
     function setupClass() {
         BASE_URL = host();
-        logging.LogManager.instance.addAdaptor(new logging.adaptors.ConsoleLogAdaptor({
-            levels: [logging.LogLevel.Info, logging.LogLevel.Error]
-        }));
+        haxe.Log.trace = logging.ExampleTracer.JsonTrace;
     }
-    
+
     function teardownClass() {
-        logging.LogManager.instance.clearAdaptors();
+        haxe.Log.trace = logging.ExampleTracer.DefaultTrace;
     }
 
     function testGet(async:Async) {
         var client = new HttpClient();
-        client.get('${BASE_URL}/get', null, ["Header1" => "header value1", "Header2" => "header value2"]).then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/get", json.url);
-            Assert.equals("header value1", json.headers.Header1);
-            Assert.equals("header value2", json.headers.Header2);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch(client.get('${BASE_URL}/get', null, ["Header1" => "header value1", "Header2" => "header value2"]))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/get", json.url);
+                Assert.equals("header value1", json.headers.Header1);
+                Assert.equals("header value2", json.headers.Header2);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 
     function testPost(async:Async) {
         var client = new HttpClient();
-        client.post('${BASE_URL}/post', null, null, ["Header1" => "header value1", "Header2" => "header value2"]).then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/post", json.url);
-            Assert.equals("header value1", json.headers.Header1);
-            Assert.equals("header value2", json.headers.Header2);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.post('${BASE_URL}/post', null, null, ["Header1" => "header value1", "Header2" => "header value2"]))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/post", json.url);
+                Assert.equals("header value1", json.headers.Header1);
+                Assert.equals("header value2", json.headers.Header2);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 
     function testPut(async:Async) {
         var client = new HttpClient();
-        client.put('${BASE_URL}/put', null, null, ["Header1" => "header value1", "Header2" => "header value2"]).then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/put", json.url);
-            Assert.equals("header value1", json.headers.Header1);
-            Assert.equals("header value2", json.headers.Header2);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.put('${BASE_URL}/put', null, null, ["Header1" => "header value1", "Header2" => "header value2"]))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/put", json.url);
+                Assert.equals("header value1", json.headers.Header1);
+                Assert.equals("header value2", json.headers.Header2);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
+    }
+
+    function testPatch(async:Async) {
+        var client = new HttpClient();
+        switch (client.put('${BASE_URL}/patch', null, null, ["Header1" => "header value1", "Header2" => "header value2"]))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/patch", json.url);
+                Assert.equals("header value1", json.headers.Header1);
+                Assert.equals("header value2", json.headers.Header2);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 
     function testDelete(async:Async) {
         var client = new HttpClient();
-        client.delete('${BASE_URL}/delete', null, null, ["Header1" => "header value1", "Header2" => "header value2"]).then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/delete", json.url);
-            Assert.equals("header value1", json.headers.Header1);
-            Assert.equals("header value2", json.headers.Header2);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.delete('${BASE_URL}/delete', null, null, ["Header1" => "header value1", "Header2" => "header value2"]))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/delete", json.url);
+                Assert.equals("header value1", json.headers.Header1);
+                Assert.equals("header value2", json.headers.Header2);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 
     function testGet_DefaultHeaders(async:Async) {
@@ -91,19 +134,25 @@ class TestHeaders extends TestBase {
             "Header2" => "default header value2",
             "Header3" => "default header value3"
         ];
-        client.get('${BASE_URL}/get', null, ["Header1" => "header value1", "Header2" => "header value2"]).then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/get", json.url);
-            Assert.equals("header value1", json.headers.Header1);
-            Assert.equals("header value2", json.headers.Header2);
-            Assert.equals("default header value3", json.headers.Header3);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.get('${BASE_URL}/get', null, ["Header1" => "header value1", "Header2" => "header value2"]))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/get", json.url);
+                Assert.equals("header value1", json.headers.Header1);
+                Assert.equals("header value2", json.headers.Header2);
+                Assert.equals("default header value3", json.headers.Header3);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 }
  

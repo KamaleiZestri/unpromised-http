@@ -1,20 +1,17 @@
 {
-    "version": "0.0.0",
+    "version": "0.0.1",
     "contributors": [
         "haxeui",
-        "ianharrigan"
+        "ianharrigan",
+        "KamaleiZestri"
     ],
     "license": "MIT",
     "tags": [
     ],
     "classPath": "src",
-    "releasenote": "0.0.0",
-    "dependencies": {
-        "promises": "",
-        "logging": "",
-        "queues-core": ""
-    },
+    "releasenote": "0.0.1",
+    "dependencies": {},
     "name": "http",
-    "description": "",
-    "url": ""
+    "description": "core-haxe's http, but with no promises and no other dependencies",
+    "url": "https://github.com/core-haxe/http"
 }

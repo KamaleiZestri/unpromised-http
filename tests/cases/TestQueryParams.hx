@@ -1,8 +1,7 @@
 package cases;
 
-import http.HttpError;
-import utest.Assert;
 import http.HttpClient;
+import utest.Assert;
 import utest.Async;
 
 @:timeout(20000)
@@ -11,76 +10,98 @@ class TestQueryParams extends TestBase {
 
     function setupClass() {
         BASE_URL = host();
-        logging.LogManager.instance.addAdaptor(new logging.adaptors.ConsoleLogAdaptor({
-            levels: [logging.LogLevel.Info, logging.LogLevel.Error]
-        }));
+        haxe.Log.trace = logging.ExampleTracer.JsonTrace;
     }
 
     function teardownClass() {
-        logging.LogManager.instance.clearAdaptors();
+        haxe.Log.trace = logging.ExampleTracer.DefaultTrace;
     }
 
     function testGet(async:Async) {
         var client = new HttpClient();
-        client.get('${BASE_URL}/get?param1=value1&param2=value2').then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/get?param1=value1&param2=value2", json.url);
-            Assert.equals("value1", json.args.param1);
-            Assert.equals("value2", json.args.param2);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.get('${BASE_URL}/get?param1=value1&param2=value2'))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/get?param1=value1&param2=value2", json.url);
+                Assert.equals("value1", json.args.param1);
+                Assert.equals("value2", json.args.param2);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 
     function testPost(async:Async) {
         var client = new HttpClient();
-        client.post('${BASE_URL}/post?param1=value1&param2=value2').then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/post?param1=value1&param2=value2", json.url);
-            Assert.equals("value1", json.args.param1);
-            Assert.equals("value2", json.args.param2);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.post('${BASE_URL}/post?param1=value1&param2=value2'))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/post?param1=value1&param2=value2", json.url);
+                Assert.equals("value1", json.args.param1);
+                Assert.equals("value2", json.args.param2);
+                async.done();
+            }
+            case Fail(error):
+            {
+                async.done();
+            
+            }
+        }
     }
-
+         
     function testPut(async:Async) {
         var client = new HttpClient();
-        client.put('${BASE_URL}/put?param1=value1&param2=value2').then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/put?param1=value1&param2=value2", json.url);
-            Assert.equals("value1", json.args.param1);
-            Assert.equals("value2", json.args.param2);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.put('${BASE_URL}/put?param1=value1&param2=value2'))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/put?param1=value1&param2=value2", json.url);
+                Assert.equals("value1", json.args.param1);
+                Assert.equals("value2", json.args.param2);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 
     function testDelete(async:Async) {
         var client = new HttpClient();
-        client.delete('${BASE_URL}/delete?param1=value1&param2=value2').then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals(host() + "/delete?param1=value1&param2=value2", json.url);
-            Assert.equals("value1", json.args.param1);
-            Assert.equals("value2", json.args.param2);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.delete('${BASE_URL}/delete?param1=value1&param2=value2'))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals(host() + "/delete?param1=value1&param2=value2", json.url);
+                Assert.equals("value1", json.args.param1);
+                Assert.equals("value2", json.args.param2);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 }

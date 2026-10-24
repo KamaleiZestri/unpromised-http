@@ -1,9 +1,9 @@
 package;
 
-import utest.ui.common.HeaderDisplayMode;
-import utest.ui.Report;
-import utest.Runner;
 import cases.*;
+import utest.Runner;
+import utest.ui.Report;
+import utest.ui.common.HeaderDisplayMode;
 
 class TestAll {
     public static function main() {

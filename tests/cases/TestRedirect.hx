@@ -1,8 +1,8 @@
 package cases;
 
+import http.HttpClient;
 import http.HttpError;
 import utest.Assert;
-import http.HttpClient;
 import utest.Async;
 
 @:timeout(20000)
@@ -11,26 +11,30 @@ class TestRedirect extends TestBase {
 
     function setupClass() {
         BASE_URL = host();
-        logging.LogManager.instance.addAdaptor(new logging.adaptors.ConsoleLogAdaptor({
-            levels: [logging.LogLevel.Info, logging.LogLevel.Error]
-        }));
+        haxe.Log.trace = logging.ExampleTracer.JsonTrace;
     }
 
     function teardownClass() {
-        logging.LogManager.instance.clearAdaptors();
+        haxe.Log.trace = logging.ExampleTracer.DefaultTrace;
     }
 
     function testRedirect(async:Async) {
         var client = new HttpClient();
-        client.get('${BASE_URL}/absolute-redirect/1').then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.get('${BASE_URL}/absolute-redirect/1'))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 
     /*
@@ -69,29 +73,41 @@ class TestRedirect extends TestBase {
 
     function testRedirect_WithHeaders(async:Async) {
         var client = new HttpClient();
-        client.get('${BASE_URL}/absolute-redirect/1', null, ["Header1" => "header value1", "Header2" => "header value2"]).then(response -> {
-            Assert.notNull(response.body);
-            var json = response.bodyAsJson;
-            Assert.notNull(json);
-            Assert.equals("header value1", json.headers.Header1);
-            Assert.equals("header value2", json.headers.Header2);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.get('${BASE_URL}/absolute-redirect/1', null, ["Header1" => "header value1", "Header2" => "header value2"]))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                var json = response.bodyAsJson;
+                Assert.notNull(json);
+                Assert.equals("header value1", json.headers.Header1);
+                Assert.equals("header value2", json.headers.Header2);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 
     function testRedirect_NoRedirect(async:Async) {
         var client = new HttpClient();
         client.followRedirects = false;
-        client.get('${BASE_URL}/absolute-redirect/1').then(response -> {
-            Assert.notNull(response.body);
-            Assert.equals(302, response.httpStatus);
-            async.done();
-        }, (error:HttpError) -> {
-            Assert.fail();
-            async.done();
-        });
+        switch (client.get('${BASE_URL}/absolute-redirect/1'))
+        {
+            case Success(response):
+            {
+                Assert.notNull(response.body);
+                Assert.equals(302, response.httpStatus);
+                async.done();
+            }
+            case Fail(error):
+            {
+                Assert.fail();
+                async.done();
+            }
+        }
     }
 }

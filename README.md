@@ -7,12 +7,10 @@
 flexible http client and server supporting different http providers
 
 # features
- - Promise based
  - GET, POST, PUT, DELETE http verbs
  - Ability to swap out http providers (via `IHttpProvider`) - currently uses modified versions of Haxe's http
  - Ability to follow redirects
  - Ability to retry failed requests
- - Optional request queue (important when certain apis require requests in order, for example when using nonces)
  - Ability to transform requests / responses (using `IHttpRequestTransformer` or `IHttpResponseTransformer`);
  - Simple, but flexible, interface
  
@@ -30,22 +28,26 @@ client.requestQueue = QueueFactory.instance.createQueue(QueueFactory.SIMPLE_QUEU
 client.defaultRequestHeaders = ["someheader" => "somevalue"];
 client.requestTransformers = [new MyRequestTransformerA(), new MyRequestTransformerB()];
 client.responseTransformers = [new MyResponseTransformerA(), new MyResponseTransformerB()];
-client.get('http://someurl?param1=value1', ["param2" => "value2"], ["header1" => "header value 1"]).then(response -> {
-    var foo = response.bodyAsJson.bar;
-}, (error:HttpError) -> {
-    // error
-});
+var opt = client.get('http://someurl?param1=value1', ["param2" => "value2"], ["header1" => "header value 1"]);
+switch (opt)
+{
+    case Success(response:HttpResponse):
+        var foo = response.bodyAsJson.bar;
+    case Fail(error:HttpError): //error
+}
+
 ```
 
 ### post
 
 ```haxe
 var client = new HttpClient();
-client.post('http://someurl?param1=value1', {foo: "bar"}, ["param2" => "value2"], ["header1" => "header value 1"]).then(response -> {
-    var foo = response.bodyAsJson.bar;
-}, (error:HttpError) -> {
-    // error
-});
+switch (client.post('http://someurl?param1=value1', {foo: "bar"}, ["param2" => "value2"], ["header1" => "header value 1"]))
+{
+    case Success(response:HttpResponse):
+        var foo = response.bodyAsJson.bar;
+    case Fail(error:HttpError): //error
+}
 ```
 (all parameters except the url are optional)
 
@@ -73,3 +75,6 @@ httpServer.onRequest = (httpRequest, httpResponse) -> {
 httpServer.start(1234);
 ```
 (see tests for more examples)
+
+# Debugging
+Use compiler flag `includeHttpTraces` to include debug traces from this library. Read test cases and logging/ExampleTracer.hx for more info.

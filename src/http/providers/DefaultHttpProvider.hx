@@ -3,115 +3,22 @@ package http.providers;
 import haxe.Http;
 import haxe.Json;
 import haxe.io.Bytes;
-import logging.LogManager;
-import logging.Logger;
-import promises.Promise;
+import http.HttpOption;
+import logging.LogLevel;
 
-#if (target.threaded && !http_no_threads)
-#if http_threaded_use_completion_queue
-enum RequestResult {
-    Success(response:HttpResponse, resolve:HttpResponse->Void);
-    Errored(error:Any, reject:Any->Void);
-}
-#end
-#end
+
 
 class DefaultHttpProvider implements IHttpProvider {
     public var encodeUrl:Bool = true;
-    private var log:Logger = new Logger(DefaultHttpProvider);
 
     public function new() {
     }
 
-    #if (target.threaded && !http_no_threads)
-
-    #if http_threaded_use_completion_queue
-    private static var _completionQueue:sys.thread.Deque<RequestResult> = new sys.thread.Deque<RequestResult>();
-    #end
-
-    // basic threaded request, which allows for async programming, could / should be greatly
-    // improved by using a thread pool, but for a preliminary impl its better than the
-    // standard (sync) behaviour of haxe std http
-    private function makeThreadedRequest(request:HttpRequest):Promise<HttpResponse> {
-        #if http_threaded_use_completion_queue
-
-        return new Promise((resolve, reject) -> {
-            sys.thread.Thread.createWithEventLoop(() -> {
-                makeRequestCommon(request).then(response -> {
-                    _completionQueue.push(Success(response, resolve));
-                }, error -> {
-                    _completionQueue.push(Errored(error, reject));
-                });
-            });
-        });
-
-        #else
-
-        return new Promise((resolve, reject) -> {
-            var mainThread = sys.thread.Thread.current();
-            mainThread.events.promise(); // keep main thread alive
-            sys.thread.Thread.createWithEventLoop(() -> {
-                makeRequestCommon(request).then(response -> {
-                    mainThread.events.runPromised(() -> resolve(response));
-                }, error -> {
-                    mainThread.events.runPromised(() -> reject(error));
-                });
-            });
-        });
-
-        #end
-    }
-
-    #if http_threaded_use_completion_queue
-    private static function onTimer() {
-        var complete = [];
-        while(true) {
-            var item = _completionQueue.pop(false);
-            if (item != null) {
-                complete.push(item);
-            } else {
-                break;
-            }
-        }
-
-        for (item in complete) {
-            switch (item) {
-                case Success(response, resolve):
-                    resolve(response);
-                case Errored(error, reject):
-                    reject(error);
-            }
-        }
-    }
-    #end
-
-    #if http_threaded_use_completion_queue
-    private static var _timer:haxe.Timer = null;
-    #end
-
-    #end
-
-    public function makeRequest(request:HttpRequest):Promise<HttpResponse> {
-        #if (target.threaded && !http_no_threads)
-        #if http_threaded_use_completion_queue
-        if (_timer == null) {
-            _timer = new haxe.Timer(10);
-            _timer.run = onTimer;
-        }
-        #end
-        #end
-
-        #if (target.threaded && !http_no_threads)
-        return makeThreadedRequest(request);
-        #else
-        return makeRequestCommon(request);
-        #end
-    }
-
-    private function makeRequestCommon(request:HttpRequest):Promise<HttpResponse> {
-        return new Promise((resolve, reject) -> {
+    public function makeRequest(request:HttpRequest):HttpOption 
+    {
             var url = request.url.build(false);
             var http = new Http(url);
+        var httpResult:HttpOption;
             var response = new HttpResponse();
             response.originalRequest = request;
 
@@ -136,16 +43,15 @@ class DefaultHttpProvider implements IHttpProvider {
                 }
             }
 
-            // log some info (only if a log adapator will respond to debug)
-            if (LogManager.instance.shouldLogDebug) {
+        #if includeHttpTraces
                 var method:String = request.method;
-                log.debug('making "${method.toLowerCase()}" request to "${url}"');
-                log.debug('    headers:', request.headers);
-                log.debug('    query params:', allParameters);
+        trace('making "${method.toLowerCase()}" request to "${url}"', LogLevel.Debug);
+        trace('    headers:', LogLevel.Debug, request.headers);
+        trace('    query params:', LogLevel.Debug,  allParameters);
                 if (request.body != null) {
-                    log.debug('    body:', request.body);
+            trace('    body:', LogLevel.Debug, request.body);
                 }
-            }
+        #end
 
             #if sys
             var output = new haxe.io.BytesOutput();
@@ -153,7 +59,7 @@ class DefaultHttpProvider implements IHttpProvider {
             http.onBytes = (bytes:Bytes) -> {
                 response.headers = http.responseHeaders;
                 response.body = bytes;
-                resolve(response);
+            httpResult =  Success(response);
             }
             /*
             http.onData = (data:String) -> {
@@ -171,7 +77,7 @@ class DefaultHttpProvider implements IHttpProvider {
                 if (http.responseHeaders != null) {
                     httpError.headers = http.responseHeaders;
                 }
-                reject(httpError);
+            httpResult =  Fail(httpError);
             }
 
             var body:Any = request.body;
@@ -235,6 +141,6 @@ class DefaultHttpProvider implements IHttpProvider {
                 case _:
                     throw new HttpError("http method not implemented (" + request.method + ")");
             }
-        });
+        return httpResult;
     }
 }
