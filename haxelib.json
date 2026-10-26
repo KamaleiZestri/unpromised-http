@@ -13,5 +13,5 @@
     "dependencies": {},
     "name": "http",
     "description": "core-haxe's http, but with no promises and no other dependencies",
-    "url": "https://github.com/core-haxe/http"
+    "url": "https://github.com/KamaleiZestri/unpromised-http"
 }

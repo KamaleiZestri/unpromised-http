@@ -207,19 +207,6 @@ class HttpClient {
         var method:String = request.method;
         trace('making "${method.toLowerCase()}" request to "${request.url.build()}"', LogLevel.Info);
         #end
-        if (request.method == HttpMethod.Post && request.headers != null && !request.headers.exists(StandardHeaders.ContentLength)) {
-            if (request.body == null) {
-                request.headers.set(StandardHeaders.ContentLength, 0);
-            } else if (request.body is String) {
-                var stringBody:String = request.body;
-                request.headers.set(StandardHeaders.ContentLength, stringBody.length);
-            } else if (request.body is haxe.io.Bytes) {
-                var bytesBody:haxe.io.Bytes = request.body;
-                request.headers.set(StandardHeaders.ContentLength, bytesBody.length);
-            } else {
-                request.headers.set(StandardHeaders.ContentLength, Std.string(request.body).length);
-            }
-        }
 
         var resOpt = provider.makeRequest(request);
 
